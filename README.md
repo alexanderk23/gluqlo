@@ -1,4 +1,4 @@
-# Gluqlo
+# Gluqlo: Fliqlo for Linux
 
 ![Gluqlo screenshot](http://alexanderk.ru/images/gluqlo.png)
 
