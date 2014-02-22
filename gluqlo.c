@@ -25,6 +25,10 @@
 #include "SDL_syswm.h"
 #include "SDL_gfxPrimitives.h"
 
+#ifndef FONT
+#define FONT "/usr/share/gluqlo/gluqlo.ttf"
+#endif
+
 const char* TITLE = "Gluqlo 1.0";
 
 bool twentyfourh = true;
@@ -37,9 +41,6 @@ const int DEFAULT_HEIGHT = 768;
 
 int width = DEFAULT_WIDTH;
 int height = DEFAULT_HEIGHT;
-
-const char* FONT_FILE_TIME = "/usr/share/fonts/gluqlo.ttf";
-const char* FONT_FILE_MODE = "/usr/share/fonts/truetype/droid/DroidSans-Bold.ttf";
 
 TTF_Font *font_time = NULL;
 TTF_Font *font_mode = NULL;
@@ -117,7 +118,7 @@ void render_ampm(SDL_Surface *surface, SDL_Rect *background, int pm) {
 	coords.x = background->x + background->h * 0.07;
 	coords.y = background->y + (pm ? background->h - offset - ampm->h : offset);
 	SDL_BlitSurface(ampm, 0, surface, &coords);
-	SDL_FreeSurface(surface);
+	SDL_FreeSurface(ampm);
 }
 
 void render_digits(SDL_Surface *surface, SDL_Rect *background, char digits[]) {
@@ -310,8 +311,8 @@ int main(int argc, char** argv ) {
 
 	TTF_Init();
 	atexit(TTF_Quit);
-	font_time = TTF_OpenFont(FONT_FILE_TIME, height / 1.68);
-	font_mode = TTF_OpenFont(FONT_FILE_MODE, height / 19.0); //15
+	font_time = TTF_OpenFont(FONT, height / 1.68);
+	font_mode = TTF_OpenFont(FONT, height / 19.0); //15
 	if (!font_time || !font_mode) {
 		fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
 		return 1;
