@@ -4,7 +4,7 @@
 
 Gluqlo (or Глюкало, if you prefer) is a SDL remake of well-known awesome [Fliqlo screensaver](http://9031.com/goodies/#fliqlo) which is originally avaliable for Windows and OSX platforms only.
 Gluqlo is inspired by (and to some extent is based on) [noflipqlo](https://github.com/bhm/noflipqlo) aka Now Open Flipqlo 2.0 by [Jacek Kuźniarski](https://github.com/bhm).
-Currently it's very close to original Fliqlo (as I hope); however, flipping animation is not implemented yet :)
+Currently it's very close to original Fliqlo (as I hope).
 
 ## Requirements
 

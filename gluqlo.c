@@ -1,4 +1,7 @@
 /*
+* Gluqlo: Fliqlo for Linux
+* https://github.com/alexanderk23/gluqlo
+*
 * Copyright (c) 2010-2012 Kuźniarski Jacek
 * Copyright (c) 2014 Alexander Kovalenko
 *
@@ -23,21 +26,22 @@
 #include "SDL.h"
 #include "SDL_ttf.h"
 #include "SDL_syswm.h"
+#include "SDL_framerate.h"
 #include "SDL_gfxPrimitives.h"
+#include "SDL_rotozoom.h"
 
 #ifndef FONT
 #define FONT "/usr/share/gluqlo/gluqlo.ttf"
 #endif
 
-const char* TITLE = "Gluqlo 1.0";
+const char* TITLE = "Gluqlo 1.1";
+const int DEFAULT_WIDTH = 1024;
+const int DEFAULT_HEIGHT = 768;
 
 bool twentyfourh = true;
 bool fullscreen = false;
 
-int past_m = -1;
-
-const int DEFAULT_WIDTH = 1024;
-const int DEFAULT_HEIGHT = 768;
+int past_h = -1, past_m = -1;
 
 int width = DEFAULT_WIDTH;
 int height = DEFAULT_HEIGHT;
@@ -53,25 +57,29 @@ SDL_Surface *screen;
 SDL_Rect hourBackground;
 SDL_Rect minBackground;
 
+SDL_Rect bgrect;
+SDL_Surface *bg;
+
 // draw rounded box
 // see http://lists.libsdl.org/pipermail/sdl-libsdl.org/2006-December/058868.html
 void fill_rounded_box_b(SDL_Surface* dst, SDL_Rect *coords, int r, SDL_Color color) {
 	Uint32 pixcolor = SDL_MapRGB(dst->format, color.r, color.g, color.b);
-	Uint32* pixels = NULL;
-	int x, y, i, j;
+
+	int i, j;
 	int rpsqrt2 = (int) (r / sqrt(2));
 	int yd = dst->pitch / dst->format->BytesPerPixel;
-	int w = coords->w / 2;
-	int h = coords->h / 2;
+	int w = coords->w / 2 - 1;
+	int h = coords->h / 2 - 1;
 	int xo = coords->x + w;
 	int yo = coords->y + h;
+
 	w -= r;
 	h -= r;
 
-	if(w < 0 || h < 0) return;
+	if(w <= 0 || h <= 0) return;
 
 	SDL_LockSurface(dst);
-	pixels = (Uint32*)(dst->pixels);
+	Uint32 *pixels = (Uint32*)(dst->pixels);
 
 	int sy = (yo - h) * yd;
 	int ey = (yo + h) * yd;
@@ -84,26 +92,31 @@ void fill_rounded_box_b(SDL_Surface* dst, SDL_Rect *coords, int r, SDL_Color col
 
 	int d = -r;
 	int x2m1 = -1;
-	y = r;
+	int y = r;
 
-	for(x = 0; x <= rpsqrt2; x++) {
+	for(int x = 0; x <= rpsqrt2; x++) {
 		x2m1 += 2;
 		d += x2m1;
 		if(d >= 0) {
 			y--;
 			d -= y * 2;
 		}
-		for(i = sx - x; i <= ex + x; i++)
+
+		for(i = sx - x; i <= ex + x; i++) {
 			pixels[sy - y * yd + i] = pixcolor;
+		}
 
-		for(i = sx - y; i <= ex + y; i++)
+		for(i = sx - y; i <= ex + y; i++) {
 			pixels[sy - x * yd + i] = pixcolor;
+		}
 
-		for(i = sx - y; i <= ex + y; i++)
+		for(i = sx - y; i <= ex + y; i++) {
 			pixels[ey + x * yd + i] = pixcolor;
+		}
 
-		for(i = sx - x; i <= ex + x; i++)
+		for(i = sx - x; i <= ex + x; i++) {
 			pixels[ey + y * yd + i] = pixcolor;
+		}
 	}
 
 	SDL_UnlockSurface(dst);
@@ -121,42 +134,101 @@ void render_ampm(SDL_Surface *surface, SDL_Rect *background, int pm) {
 	SDL_FreeSurface(ampm);
 }
 
-void render_digits(SDL_Surface *surface, SDL_Rect *background, char digits[]) {
+
+void render_digits(SDL_Surface *surface, SDL_Rect *background, char digits[], char prevdigits[], int maxsteps, int step) {
 	SDL_Rect line;
-	SDL_Rect coords;
+	SDL_Rect srccoords, coords;
 	SDL_Surface *glyph;
 
 	int min_x, max_x, min_y, max_y, advance;
 	int spc = surface->h * .0125;
-	int center_x = background->x + background->w / 2;
 	int adjust = digits[0] == '1'; // special case
-
-	// fill background
-	int radius = .05714 * surface->h;
-	fill_rounded_box_b(surface, background, radius, BACKGROUND_COLOR);
+	int center_x = 0;
+	int halfsteps = maxsteps / 2;
 
 	// draw digits
 	if(digits[1]) {
-		if(adjust) center_x -= 3 * spc;
+		double scale;
+		Uint8 c;
+		SDL_Color color;
+		int upperhalf = (step+1) <= halfsteps;
+		if(upperhalf) {
+			scale = 1.0 - (1.0 * (step+0.0) / (halfsteps-1));
+			c = 0xb7 - ((1.0 * 0xb7) * (step+0.0) / (halfsteps-1));
+		} else {
+			scale = 1.0 * (step+1.0 - halfsteps) / halfsteps;
+			c = (1.0 * 0xb7) * (step+1.0 - halfsteps) / halfsteps;
+		}
+		color.r = color.g = color.b = c;
+
+		// blit upper halves of current digits
+		coords.x = background->x;
+		coords.y = background->y;
+		coords.w = background->w;
+		coords.h = background->h/2;
+		SDL_SetClipRect(surface, &coords);
+		// blit background
+		SDL_BlitSurface(bg, 0, surface, &coords);
+
+		if(adjust) center_x = -2.5 * spc;
+
 		// first digit
 		TTF_GlyphMetrics(font_time, digits[0], &min_x, &max_x, &min_y, &max_y, &advance);
 		glyph = TTF_RenderGlyph_Blended(font_time, digits[0], FONT_COLOR);
+		coords.x = background->x + background->w / 2 - max_x + min_x - spc - (adjust * spc) + center_x;
 		coords.y = background->y + ((background->h - glyph->h) / 2);
-		coords.x = center_x - max_x + min_x - spc - (adjust * spc);
 		SDL_BlitSurface(glyph, 0, surface, &coords);
 		SDL_FreeSurface(glyph);
+
 		// second digit
 		TTF_GlyphMetrics(font_time, digits[1], &min_x, &max_x, &min_y, &max_y, &advance);
 		glyph = TTF_RenderGlyph_Blended(font_time, digits[1], FONT_COLOR);
+		coords.x = background->x + background->w / 2 + spc / 2 + center_x;
 		coords.y = background->y + ((background->h - glyph->h) / 2);
-		coords.x = center_x + spc / 2;
 		SDL_BlitSurface(glyph, 0, surface, &coords);
 		SDL_FreeSurface(glyph);
+
+		SDL_SetClipRect(surface, NULL);
+
+		// blit flipping half
+		SDL_Surface *bgcopy = SDL_ConvertSurface(bg, bg->format, bg->flags);
+
+		adjust = (upperhalf ? prevdigits[0] : digits[0]) == '1'; // special case
+		if(adjust) center_x = -2.5 * spc; else center_x = 0;
+
+		TTF_GlyphMetrics(font_time, upperhalf ? prevdigits[0] : digits[0], &min_x, &max_x, &min_y, &max_y, &advance);
+		glyph = TTF_RenderGlyph_Blended(font_time, upperhalf ? prevdigits[0] : digits[0], color);
+		coords.x = bg->w / 2 - max_x + min_x - spc - (adjust * spc) + center_x;
+		coords.y = (bg->h - glyph->h) / 2;
+		SDL_BlitSurface(glyph, 0, bgcopy, &coords);
+		SDL_FreeSurface(glyph);
+
+		TTF_GlyphMetrics(font_time, upperhalf ? prevdigits[1] : digits[1], &min_x, &max_x, &min_y, &max_y, &advance);
+		glyph = TTF_RenderGlyph_Blended(font_time, upperhalf ? prevdigits[1] : digits[1], color);
+		coords.x = bg->w / 2 + spc / 2 + center_x;
+		coords.y = (bg->h - glyph->h) / 2;
+		SDL_BlitSurface(glyph, 0, bgcopy, &coords);
+		SDL_FreeSurface(glyph);
+
+		SDL_Surface *z = zoomSurface(bgcopy, 1.0, scale, 1);
+		srccoords.x = 0;
+		srccoords.y = upperhalf ? 0 : z->h / 2;
+		srccoords.w = z->w;
+		srccoords.h = z->h / 2;
+		coords.x = background->x;
+		coords.y = background->y + ( upperhalf ? ((background->h - z->h) / 2) : background->h / 2);
+		SDL_BlitSurface(z, &srccoords, surface, &coords);
+		SDL_FreeSurface(z);
+		SDL_FreeSurface(bgcopy);
+
 	} else {
 		// single digit
+		if(adjust) center_x = -2.5 * spc;
+		// blit background
+		SDL_BlitSurface(bg, 0, surface, background);
 		glyph = TTF_RenderGlyph_Blended(font_time, digits[0], FONT_COLOR);
+		coords.x = background->x + background->w / 2 - glyph->w / 2 + center_x;
 		coords.y = background->y + ((background->h - glyph->h) / 2);
-		coords.x = center_x - glyph->w / 2 - (adjust ? 5 * spc : 0);
 		SDL_BlitSurface(glyph, 0, surface, &coords);
 		SDL_FreeSurface(glyph);
 	}
@@ -172,29 +244,39 @@ void render_digits(SDL_Surface *surface, SDL_Rect *background, char digits[]) {
 	SDL_FillRect(surface, &line, SDL_MapRGBA(surface->format, 0x1a, 0x1a, 0x1a, 0));
 }
 
-void render_clock() {
-	char buffer[3];
+void render_clock(int maxsteps, int step) {
+
+	char buffer[3], buffer2[3];
 	struct tm *_time;
 	time_t rawtime;
-
-	// clear screen
-	SDL_FillRect(screen, 0, SDL_MapRGB(screen->format, 0, 0, 0));
 
 	time(&rawtime);
 	_time = localtime(&rawtime);
 
-	// draw hours and minutes
-	snprintf(buffer, 3, "%d", twentyfourh ? _time->tm_hour : (_time->tm_hour + 11) % 12 + 1);
-	render_digits(screen, &hourBackground, buffer);
+	// draw hours
+	if(_time->tm_hour != past_h) {
+		int h = twentyfourh ? _time->tm_hour : (_time->tm_hour + 11) % 12 + 1;
+		snprintf(buffer, 3, "%d", h);
+		snprintf(buffer2, 3, "%d", h);
+		render_digits(screen, &hourBackground, buffer, buffer2, maxsteps, step);
+		// draw am/pm
+		if(!twentyfourh) render_ampm(screen, &hourBackground, _time->tm_hour > 12);
+	}
 
-	snprintf(buffer, 3, "%02d", _time->tm_min);
-	render_digits(screen, &minBackground, buffer);
+	// draw minutes
+	if(_time->tm_min != past_m) {
+		snprintf(buffer, 3, "%02d", _time->tm_min);
+		snprintf(buffer2, 3, "%02d", past_m);
+		render_digits(screen, &minBackground, buffer, buffer2, maxsteps, step);
+	}
 
-	// draw am/pm
-	if(!twentyfourh) render_ampm(screen, &hourBackground, _time->tm_hour > 12);
-	
 	// flip backbuffer
 	SDL_Flip(screen);
+
+	if(step == maxsteps-1) {
+		past_h = _time->tm_hour;
+		past_m = _time->tm_min;
+	}
 }
 
 Uint32 update_time(Uint32 interval, void *param) {
@@ -206,13 +288,12 @@ Uint32 update_time(Uint32 interval, void *param) {
 	time_i = localtime(&rawtime);
 
 	if(time_i->tm_min != past_m) {
-		interval = 1000 * (60 - time_i->tm_sec) - 250;
-		past_m = time_i->tm_min;
 		e.type = SDL_USEREVENT;
 		e.user.code = 0;
 		e.user.data1 = NULL;
 		e.user.data2 = NULL;
 		SDL_PushEvent(&e);
+		interval = 1000 * (60 - time_i->tm_sec) - 250;
 	} else {
 		interval = 250;
 	}
@@ -318,30 +399,52 @@ int main(int argc, char** argv ) {
 		return 1;
 	}
 
-	// calculate box coordinates
-	hourBackground.y = 0.2 * height;
-	hourBackground.x = 0.5 * (width - ((0.031) * width) - (1.2 * height));
-	hourBackground.w = height * 0.6;
-	hourBackground.h = hourBackground.w;
+	// clear screen
+	SDL_FillRect(screen, 0, SDL_MapRGB(screen->format, 0, 0, 0));
 
-	int spacing = 0.031 * width;
-	minBackground.x = hourBackground.x + (0.6*height) + spacing;
+	// calculate box coordinates
+	int rectsize = height * 0.6;
+	int spacing = width * .031;
+	int radius =  height * .05714;
+
+	hourBackground.x = 0.5 * (width - (0.031 * width) - (1.2 * height));
+	hourBackground.y = 0.2 * height;
+	hourBackground.w = rectsize;
+	hourBackground.h = rectsize;
+
+	minBackground.x = hourBackground.x + (0.6 * height) + spacing;
 	minBackground.y = hourBackground.y;
-	minBackground.h = hourBackground.h;
-	minBackground.w = hourBackground.w;
+	minBackground.w = rectsize;
+	minBackground.h = rectsize;
+
+	// create background surface
+	bgrect.x = 0;
+	bgrect.y = 0;
+	bgrect.w = rectsize;
+	bgrect.h = rectsize;
+	bg = SDL_CreateRGBSurface(SDL_HWSURFACE|SDL_SRCALPHA, rectsize, rectsize, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+	fill_rounded_box_b(bg, &bgrect, radius, BACKGROUND_COLOR);
 
 	// draw current time
-	render_clock();
+	render_clock(20, 19);
 
 	// main loop
 	bool done = false;
 	SDL_Event event;
-	SDL_TimerID timer = SDL_AddTimer(250, update_time, NULL);
+	SDL_TimerID timer = SDL_AddTimer(60, update_time, NULL);
+	int maxsteps = 12;
+
+	FPSmanager fpsManager;
+	SDL_initFramerate(&fpsManager);
+	SDL_setFramerate(&fpsManager, 50);
 
 	while(!done && SDL_WaitEvent(&event)) {
 		switch(event.type) {
 			case SDL_USEREVENT:
-				render_clock();
+				for(int s=0; s<maxsteps; s++) {
+					render_clock(maxsteps,s);
+					SDL_framerateDelay(&fpsManager);
+				}
 				break;
 			case SDL_KEYDOWN:
 				switch(event.key.keysym.sym) {
@@ -359,6 +462,8 @@ int main(int argc, char** argv ) {
 	}
 
 	SDL_RemoveTimer(timer);
+
+	SDL_FreeSurface(bg);
 	SDL_FreeSurface(screen);
 
 	TTF_CloseFont(font_time);
