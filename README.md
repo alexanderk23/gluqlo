@@ -1,6 +1,6 @@
 # Gluqlo: Fliqlo for Linux
 
-![Gluqlo screenshot](http://alexanderk.ru/images/gluqlo.png)
+[![Gluqlo](http://alexanderk23.github.io/gluqlo/images/gluqlo.png)](https://www.youtube.com/watch?v=XhT7PBwpMIo)
 
 Gluqlo (or Глюкало, if you prefer) is a SDL remake of well-known awesome [Fliqlo screensaver](http://9031.com/goodies/#fliqlo) which is originally avaliable for Windows and OSX platforms only.
 Gluqlo is inspired by (and to some extent is based on) [noflipqlo](https://github.com/bhm/noflipqlo) aka Now Open Flipqlo 2.0 by [Jacek Kuźniarski](https://github.com/bhm).
