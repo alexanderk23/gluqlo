@@ -114,7 +114,7 @@ void render_ampm(SDL_Surface *surface, SDL_Rect *background, int pm) {
 	SDL_Rect coords;
 	snprintf(mode, 3, "%cM", pm ? 'P' : 'A');
 	SDL_Surface *ampm = TTF_RenderText_Blended(font_mode, mode, FONT_COLOR);
-	int offset = background->h * 0.104;
+	int offset = background->h * 0.12;
 	coords.x = background->x + background->h * 0.07;
 	coords.y = background->y + (pm ? background->h - offset - ampm->h : offset);
 	SDL_BlitSurface(ampm, 0, surface, &coords);
@@ -312,7 +312,7 @@ int main(int argc, char** argv ) {
 	TTF_Init();
 	atexit(TTF_Quit);
 	font_time = TTF_OpenFont(FONT, height / 1.68);
-	font_mode = TTF_OpenFont(FONT, height / 19.0); //15
+	font_mode = TTF_OpenFont(FONT, height / 16.5);
 	if (!font_time || !font_mode) {
 		fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
 		return 1;
