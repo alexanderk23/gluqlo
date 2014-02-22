@@ -17,7 +17,7 @@ Currently it's very close to original Fliqlo (as I hope); however, flipping anim
 
 First, install build-time dependencies (Ubuntu/Debian):
 
-    $ sudo apt-get install libsdl1.2-dev libsdl-ttf2.0-dev libsdl-gfx1.2-dev libx11-dev ttf-droid
+    $ sudo apt-get install libsdl1.2-dev libsdl-ttf2.0-dev libsdl-gfx1.2-dev libx11-dev
 
 Then compile and install as usual:
 
