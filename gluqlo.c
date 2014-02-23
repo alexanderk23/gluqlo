@@ -246,7 +246,7 @@ void render_clock(int maxsteps, int step) {
 	if(_time->tm_hour != past_h) {
 		int h = twentyfourh ? _time->tm_hour : (_time->tm_hour + 11) % 12 + 1;
 		snprintf(buffer, 3, "%d", h);
-		snprintf(buffer2, 3, "%d", h);
+		snprintf(buffer2, 3, "%d", past_h);
 		render_digits(screen, &hourBackground, buffer, buffer2, maxsteps, step);
 		// draw am/pm
 		if(!twentyfourh) render_ampm(screen, &hourBackground, _time->tm_hour > 12);
@@ -440,6 +440,7 @@ int main(int argc, char** argv ) {
 					case SDLK_ESCAPE:
 					case SDLK_q:
 						done = true;
+						break;
 					default:
 						break;
 				}
