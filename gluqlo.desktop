@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Gluqlo: Fliqlo for Linux
+Comment=SDL implementation of Fliqlo, a very popular OSX screensaver
+Exec=/usr/lib/xscreensaver/gluqlo -root
+TryExec=/usr/lib/xscreensaver/gluqlo
+StartupNotify=false
+Terminal=false
+Type=Application
+Categories=GNOME;Screensaver;
+OnlyShowIn=GNOME;
+X-Ubuntu-Gettext-Domain=gnome-screensaver
+

@@ -122,130 +122,119 @@ void fill_rounded_box_b(SDL_Surface* dst, SDL_Rect *coords, int r, SDL_Color col
 	SDL_UnlockSurface(dst);
 }
 
-void render_ampm(SDL_Surface *surface, SDL_Rect *background, int pm) {
+void render_ampm(SDL_Surface *surface, SDL_Rect *rect, int pm) {
 	char mode[3];
 	SDL_Rect coords;
 	snprintf(mode, 3, "%cM", pm ? 'P' : 'A');
 	SDL_Surface *ampm = TTF_RenderText_Blended(font_mode, mode, FONT_COLOR);
-	int offset = background->h * 0.12;
-	coords.x = background->x + background->h * 0.07;
-	coords.y = background->y + (pm ? background->h - offset - ampm->h : offset);
+	int offset = rect->h * 0.127;
+	coords.x = rect->x + rect->h * 0.07;
+	coords.y = rect->y + (pm ? rect->h - offset - ampm->h : offset);
 	SDL_BlitSurface(ampm, 0, surface, &coords);
 	SDL_FreeSurface(ampm);
 }
 
 
-void render_digits(SDL_Surface *surface, SDL_Rect *background, char digits[], char prevdigits[], int maxsteps, int step) {
-	SDL_Rect line;
-	SDL_Rect srccoords, coords;
-	SDL_Surface *glyph;
 
+void blit_digits(SDL_Surface *surface, SDL_Rect *rect, int spc, char digits[], SDL_Color color) {
 	int min_x, max_x, min_y, max_y, advance;
-	int spc = surface->h * .0125;
-	int adjust = digits[0] == '1'; // special case
-	int center_x = 0;
-	int halfsteps = maxsteps / 2;
+	int adjust_x = (digits[0] == '1') ? 2.5 * spc : 0; // special case
+	int center_x = rect->x + rect->w / 2 - adjust_x;
 
-	// draw digits
+	SDL_Surface *glyph;
+	SDL_Rect coords;
+
 	if(digits[1]) {
-		double scale;
-		Uint8 c;
-		SDL_Color color;
-		int upperhalf = (step+1) <= halfsteps;
-		if(upperhalf) {
-			scale = 1.0 - (1.0 * (step+0.0) / (halfsteps-1));
-			c = 0xb7 - ((1.0 * 0xb7) * (step+0.0) / (halfsteps-1));
-		} else {
-			scale = 1.0 * (step+1.0 - halfsteps) / halfsteps;
-			c = (1.0 * 0xb7) * (step+1.0 - halfsteps) / halfsteps;
-		}
-		color.r = color.g = color.b = c;
-
-		// blit upper halves of current digits
-		coords.x = background->x;
-		coords.y = background->y;
-		coords.w = background->w;
-		coords.h = background->h/2;
-		SDL_SetClipRect(surface, &coords);
-		// blit background
-		SDL_BlitSurface(bg, 0, surface, &coords);
-
-		if(adjust) center_x = -2.5 * spc;
-
 		// first digit
 		TTF_GlyphMetrics(font_time, digits[0], &min_x, &max_x, &min_y, &max_y, &advance);
-		glyph = TTF_RenderGlyph_Blended(font_time, digits[0], FONT_COLOR);
-		coords.x = background->x + background->w / 2 - max_x + min_x - spc - (adjust * spc) + center_x;
-		coords.y = background->y + ((background->h - glyph->h) / 2);
+		glyph = TTF_RenderGlyph_Blended(font_time, digits[0], color);
+		coords.x = center_x - max_x + min_x - spc - (adjust_x ? spc : 0);
+		coords.y = rect->y + (rect->h - glyph->h) / 2;
 		SDL_BlitSurface(glyph, 0, surface, &coords);
 		SDL_FreeSurface(glyph);
-
 		// second digit
 		TTF_GlyphMetrics(font_time, digits[1], &min_x, &max_x, &min_y, &max_y, &advance);
-		glyph = TTF_RenderGlyph_Blended(font_time, digits[1], FONT_COLOR);
-		coords.x = background->x + background->w / 2 + spc / 2 + center_x;
-		coords.y = background->y + ((background->h - glyph->h) / 2);
+		glyph = TTF_RenderGlyph_Blended(font_time, digits[1], color);
+		coords.y = rect->y + (rect->h - glyph->h) / 2;
+		coords.x = center_x + spc / 2;
 		SDL_BlitSurface(glyph, 0, surface, &coords);
 		SDL_FreeSurface(glyph);
-
-		SDL_SetClipRect(surface, NULL);
-
-		// blit flipping half
-		SDL_Surface *bgcopy = SDL_ConvertSurface(bg, bg->format, bg->flags);
-
-		adjust = (upperhalf ? prevdigits[0] : digits[0]) == '1'; // special case
-		if(adjust) center_x = -2.5 * spc; else center_x = 0;
-
-		TTF_GlyphMetrics(font_time, upperhalf ? prevdigits[0] : digits[0], &min_x, &max_x, &min_y, &max_y, &advance);
-		glyph = TTF_RenderGlyph_Blended(font_time, upperhalf ? prevdigits[0] : digits[0], color);
-		coords.x = bg->w / 2 - max_x + min_x - spc - (adjust * spc) + center_x;
-		coords.y = (bg->h - glyph->h) / 2;
-		SDL_BlitSurface(glyph, 0, bgcopy, &coords);
-		SDL_FreeSurface(glyph);
-
-		TTF_GlyphMetrics(font_time, upperhalf ? prevdigits[1] : digits[1], &min_x, &max_x, &min_y, &max_y, &advance);
-		glyph = TTF_RenderGlyph_Blended(font_time, upperhalf ? prevdigits[1] : digits[1], color);
-		coords.x = bg->w / 2 + spc / 2 + center_x;
-		coords.y = (bg->h - glyph->h) / 2;
-		SDL_BlitSurface(glyph, 0, bgcopy, &coords);
-		SDL_FreeSurface(glyph);
-
-		SDL_Surface *z = zoomSurface(bgcopy, 1.0, scale, 1);
-		srccoords.x = 0;
-		srccoords.y = upperhalf ? 0 : z->h / 2;
-		srccoords.w = z->w;
-		srccoords.h = z->h / 2;
-		coords.x = background->x;
-		coords.y = background->y + ( upperhalf ? ((background->h - z->h) / 2) : background->h / 2);
-		SDL_BlitSurface(z, &srccoords, surface, &coords);
-		SDL_FreeSurface(z);
-		SDL_FreeSurface(bgcopy);
-
 	} else {
 		// single digit
-		if(adjust) center_x = -2.5 * spc;
-		// blit background
-		SDL_BlitSurface(bg, 0, surface, background);
-		glyph = TTF_RenderGlyph_Blended(font_time, digits[0], FONT_COLOR);
-		coords.x = background->x + background->w / 2 - glyph->w / 2 + center_x;
-		coords.y = background->y + ((background->h - glyph->h) / 2);
+		glyph = TTF_RenderGlyph_Blended(font_time, digits[0], color);
+		coords.x = center_x - glyph->w / 2;
+		coords.y = rect->y + (rect->h - glyph->h) / 2;
 		SDL_BlitSurface(glyph, 0, surface, &coords);
 		SDL_FreeSurface(glyph);
 	}
+}
+
+
+void render_digits(SDL_Surface *surface, SDL_Rect *background, char digits[], char prevdigits[], int maxsteps, int step) {
+	SDL_Rect rect, dstrect;
+	SDL_Color color;
+	double scale;
+	Uint8 c;
+
+	int spc = surface->h * .0125;
+
+	// blit upper halves of current digits
+	rect.x = background->x;
+	rect.y = background->y;
+	rect.w = background->w;
+	rect.h = background->h/2;
+	SDL_SetClipRect(surface, &rect);
+	SDL_BlitSurface(bg, 0, surface, &rect);
+	blit_digits(surface, background, spc, digits, FONT_COLOR);
+	SDL_SetClipRect(surface, NULL);
+
+	int halfsteps = maxsteps / 2;
+	int upperhalf = (step+1) <= halfsteps;
+	if(upperhalf) {
+		scale = 1.0 - (1.0 * step) / (halfsteps - 1);
+		c = 0xb7 - 0xb7 * (1.0 * step) / (halfsteps - 1);
+	} else {
+		scale = ((1.0 * step) - halfsteps + 1) / halfsteps;
+		c = 0xb7 * ((1.0 * step) - halfsteps + 1) / halfsteps;
+	}
+	color.r = color.g = color.b = c;
+
+	// create surface to scale from filled background surface
+	SDL_Surface *bgcopy = SDL_ConvertSurface(bg, bg->format, bg->flags);
+	rect.x = 0;
+	rect.y = 0;
+	rect.w = bgcopy->w;
+	rect.h = bgcopy->h;
+	blit_digits(bgcopy, &rect, spc, upperhalf ? prevdigits : digits, color);
+
+	// scale and blend it to dest
+	SDL_Surface *scaled = zoomSurface(bgcopy, 1.0, scale, 1);
+	rect.x = 0;
+	rect.y = upperhalf ? 0 : scaled->h / 2;
+	rect.w = scaled->w;
+	rect.h = scaled->h / 2;
+	dstrect.x = background->x;
+	dstrect.y = background->y + ( upperhalf ? ((background->h - scaled->h) / 2) : background->h / 2);
+	dstrect.w = rect.w;
+	dstrect.h = rect.h;	
+	SDL_SetClipRect(surface, &dstrect);
+	SDL_BlitSurface(scaled, &rect, surface, &dstrect);
+	SDL_SetClipRect(surface, NULL);
+	SDL_FreeSurface(scaled);
+	SDL_FreeSurface(bgcopy);
 
 	// draw divider
-	line.h = surface->h * 0.005;
-	line.w = background->w;
-	line.x = background->x;
-	line.y = background->y + (background->h - line.h) / 2;
-	SDL_FillRect(surface, &line, SDL_MapRGBA(surface->format, 0, 0, 0, 0));
-	line.y += line.h;
-	line.h = 1;
-	SDL_FillRect(surface, &line, SDL_MapRGBA(surface->format, 0x1a, 0x1a, 0x1a, 0));
+	rect.h = surface->h * 0.005;
+	rect.w = background->w;
+	rect.x = background->x;
+	rect.y = background->y + (background->h - rect.h) / 2;
+	SDL_FillRect(surface, &rect, SDL_MapRGB(surface->format, 0, 0, 0));
+	rect.y += rect.h;
+	rect.h = 1;
+	SDL_FillRect(surface, &rect, SDL_MapRGB(surface->format, 0x1a, 0x1a, 0x1a));
 }
 
 void render_clock(int maxsteps, int step) {
-
 	char buffer[3], buffer2[3];
 	struct tm *_time;
 	time_t rawtime;
@@ -422,7 +411,7 @@ int main(int argc, char** argv ) {
 	bgrect.y = 0;
 	bgrect.w = rectsize;
 	bgrect.h = rectsize;
-	bg = SDL_CreateRGBSurface(SDL_HWSURFACE|SDL_SRCALPHA, rectsize, rectsize, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+	bg = SDL_CreateRGBSurface(SDL_HWSURFACE|SDL_SRCALPHA, rectsize, rectsize, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0x000000ff);
 	fill_rounded_box_b(bg, &bgrect, radius, BACKGROUND_COLOR);
 
 	// draw current time
@@ -442,7 +431,7 @@ int main(int argc, char** argv ) {
 		switch(event.type) {
 			case SDL_USEREVENT:
 				for(int s=0; s<maxsteps; s++) {
-					render_clock(maxsteps,s);
+					render_clock(maxsteps, s);
 					SDL_framerateDelay(&fpsManager);
 				}
 				break;
