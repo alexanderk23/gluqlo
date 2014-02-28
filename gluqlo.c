@@ -26,7 +26,6 @@
 #include "SDL.h"
 #include "SDL_ttf.h"
 #include "SDL_syswm.h"
-#include "SDL_framerate.h"
 #include "SDL_gfxPrimitives.h"
 #include "SDL_rotozoom.h"
 
@@ -268,6 +267,24 @@ void render_clock(int maxsteps, int step) {
 	}
 }
 
+void render_animation() {
+	const int DURATION = 260;
+	int start_tick = SDL_GetTicks();
+	int end_tick = start_tick + DURATION;
+	int current_tick;
+	int frame;
+	int done = 0;
+	while(!done) {
+		current_tick = SDL_GetTicks();
+		if(current_tick >= end_tick) {
+			done = 1;
+			current_tick = end_tick;
+		}
+		frame = 99 * (current_tick-start_tick) / (end_tick-start_tick);
+		render_clock(100, frame);
+	}
+}
+
 Uint32 update_time(Uint32 interval, void *param) {
 	SDL_Event e;
 	time_t rawtime;
@@ -421,19 +438,11 @@ int main(int argc, char** argv ) {
 	bool done = false;
 	SDL_Event event;
 	SDL_TimerID timer = SDL_AddTimer(60, update_time, NULL);
-	int maxsteps = 12;
-
-	FPSmanager fpsManager;
-	SDL_initFramerate(&fpsManager);
-	SDL_setFramerate(&fpsManager, 50);
 
 	while(!done && SDL_WaitEvent(&event)) {
 		switch(event.type) {
 			case SDL_USEREVENT:
-				for(int s=0; s<maxsteps; s++) {
-					render_clock(maxsteps, s);
-					SDL_framerateDelay(&fpsManager);
-				}
+				render_animation();
 				break;
 			case SDL_KEYDOWN:
 				switch(event.key.keysym.sym) {
