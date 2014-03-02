@@ -15,9 +15,9 @@ Currently it's very close to original Fliqlo (as I hope).
 
 ## Installation (PPA for Quantal and Saucy)
 
-   $ sudo apt-add-repository ppa:alexanderk23/ppa
-   $ sudo apt-get update
-   $ sudo apt-get install qluqlo
+    $ sudo apt-add-repository ppa:alexanderk23/ppa
+    $ sudo apt-get update
+    $ sudo apt-get install qluqlo
 
 ## Installation (Source)
 
