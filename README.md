@@ -13,7 +13,13 @@ Currently it's very close to original Fliqlo (as I hope).
 - SDL_ttf 2.0
 - XScreensaver (optional)
 
-## Installation
+## Installation (PPA for Quantal and Saucy)
+
+   $ sudo apt-add-repository ppa:alexanderk23/ppa
+   $ sudo apt-get update
+   $ sudo apt-get install qluqlo
+
+## Installation (Source)
 
 First, install build-time dependencies (Ubuntu/Debian):
 
