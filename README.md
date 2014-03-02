@@ -13,7 +13,7 @@ Currently it's very close to original Fliqlo (as I hope).
 - SDL_ttf 2.0
 - XScreensaver (optional)
 
-## Installation (PPA for Quantal and Saucy)
+## Installation (PPA for Precise, Quantal and Saucy)
 
     $ sudo apt-add-repository ppa:alexanderk23/ppa
     $ sudo apt-get update
