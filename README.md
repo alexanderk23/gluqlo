@@ -17,7 +17,7 @@ Currently it's very close to original Fliqlo (as I hope).
 
     $ sudo apt-add-repository ppa:alexanderk23/ppa
     $ sudo apt-get update
-    $ sudo apt-get install qluqlo
+    $ sudo apt-get install gluqlo
 
 ## Installation (Source)
 
