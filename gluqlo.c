@@ -311,7 +311,7 @@ Uint32 update_time(Uint32 interval, void *param) {
 int main(int argc, char** argv ) {
 	char *wid_env;
 	static char sdlwid[100];
-	static double display_scale_factor = 1;
+	double display_scale_factor = 1;
 
 	Uint32 wid = 0;
 	Display *display;
