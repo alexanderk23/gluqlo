@@ -448,7 +448,7 @@ int main(int argc, char** argv ) {
 	fill_rounded_box_b(bg, &bgrect, radius, BACKGROUND_COLOR);
 
 	// draw current time
-	render_clock(40, 19);
+	render_clock(20, 19);
 
 	// main loop
 	bool done = false;
