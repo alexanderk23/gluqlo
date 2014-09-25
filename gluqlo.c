@@ -274,6 +274,7 @@ void render_animation() {
 	int current_tick;
 	int frame;
 	int done = 0;
+
 	while(!done) {
 		current_tick = SDL_GetTicks();
 		if(current_tick >= end_tick) {
@@ -310,6 +311,8 @@ Uint32 update_time(Uint32 interval, void *param) {
 int main(int argc, char** argv ) {
 	char *wid_env;
 	static char sdlwid[100];
+	double display_scale_factor = 1;
+
 	Uint32 wid = 0;
 	Display *display;
 	XWindowAttributes windowAttributes;
@@ -323,6 +326,7 @@ int main(int argc, char** argv ) {
 			printf("  -w\t\tCustom width\n");
 			printf("  -h\t\tCustom height\n");
 			printf("  -r\t\tCustom resolution in WxH format\n");
+			printf("  -s\t\tCustom display scale factor\n");
 			return 0;
 		} else if(strcmp("-root", argv[i]) == 0 || strcmp("-f", argv[i]) == 0 || strcmp("--fullscreen", argv[i]) == 0) {
 			fullscreen = true;
@@ -340,6 +344,9 @@ int main(int argc, char** argv ) {
 			i++;
 		} else if(strcmp("-h", argv[i]) == 0) {
 			height = atoi(argv[i+1]);
+			i++;
+		} else if(strcmp("-s", argv[i]) == 0) {
+			display_scale_factor = atof(argv[i+1]);
 			i++;
 		} else if(strcmp("-window-id", argv[i]) == 0) {
 			wid = strtol(argv[i+1], (char **) NULL, 0);
@@ -393,12 +400,12 @@ int main(int argc, char** argv ) {
 
 	SDL_WM_SetCaption(TITLE, TITLE);
 
-	width = screen->w;
-	height = screen->h;
-
+	width = screen->w * display_scale_factor;
+	height = screen->h * display_scale_factor;
+	
 	TTF_Init();
 	atexit(TTF_Quit);
-	font_time = TTF_OpenFont(FONT, height / 1.68);
+	font_time = TTF_OpenFont(FONT, height / 1.68 );
 	font_mode = TTF_OpenFont(FONT, height / 16.5);
 	if (!font_time || !font_mode) {
 		fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
@@ -413,10 +420,19 @@ int main(int argc, char** argv ) {
 	int spacing = width * .031;
 	int radius =  height * .05714;
 
-	hourBackground.x = 0.5 * (width - (0.031 * width) - (1.2 * height));
-	hourBackground.y = 0.2 * height;
-	hourBackground.w = rectsize;
-	hourBackground.h = rectsize;
+	int jitter_width  = 1;
+	int jitter_height = 1;
+	if (display_scale_factor != 1) {
+		jitter_width  = (screen->w - width) * 0.5;
+		jitter_height = (screen->h - height) * 0.5;
+	}
+
+
+	hourBackground.x = 0.5 * (width - (0.031 * width) - (1.2 * height)) 
+									+ jitter_width;
+	hourBackground.y = 0.2 * height + jitter_height;
+	hourBackground.w = rectsize ;
+	hourBackground.h = rectsize ;
 
 	minBackground.x = hourBackground.x + (0.6 * height) + spacing;
 	minBackground.y = hourBackground.y;
