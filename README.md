@@ -32,8 +32,11 @@ Then compile and install as usual:
 ## Usage
 
 If you want to use Gluqlo as a screensaver, you may need to remove gnome-screensaver (which nowadays just does nothing)
-and install XScreensaver (if you're using Ubuntu, see [this page](http://www.howtogeek.com/114027/how-to-add-screensavers-to-ubuntu-12.04/) for detailed instructions;
-don't forget to add gluqlo to your ~/.xscreensaver config file).
+and install XScreensaver (if you're using Ubuntu, see [this page](http://www.howtogeek.com/114027/how-to-add-screensavers-to-ubuntu-12.04/) for detailed instructions).
+Don't forget to add gluqlo to your ~/.xscreensaver config file:
+
+    GL: gluqlo --root \n\
+
 Otherwise, you can just run it as is.
 
 ## Contributing
