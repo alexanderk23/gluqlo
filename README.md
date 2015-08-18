@@ -13,13 +13,13 @@ Currently it's very close to original Fliqlo (as I hope).
 - SDL_ttf 2.0
 - XScreensaver (optional)
 
-## Installation (PPA for Precise, Quantal, Saucy, & Trusty)
+## Installation (Ubuntu PPA for Vivid, Trusty, Saucy, Quantal and Precise)
 
     $ sudo apt-add-repository ppa:alexanderk23/ppa
     $ sudo apt-get update
     $ sudo apt-get install gluqlo
 
-## Installation (Source)
+## Building from source
 
 First, install build-time dependencies (Ubuntu/Debian):
 
