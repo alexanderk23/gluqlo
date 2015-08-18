@@ -49,7 +49,7 @@ Currently it's very close to original Fliqlo (as I hope).</p>
 <li>SDL_ttf 2.0</li>
 <li>XScreensaver (optional)</li>
 </ul><h2>
-<a name="installation-ppa-for-precise-quantal-and-saucy" class="anchor" href="#installation-ppa-for-precise-quantal-and-saucy"><span class="octicon octicon-link"></span></a>Installation (PPA for Precise, Quantal and Saucy)</h2>
+<a name="installation-ppa" class="anchor" href="#installation-ppa"><span class="octicon octicon-link"></span></a>Installation (Ubuntu PPA for Vivid, Trusty, Saucy, Quantal and Precise)</h2>
 
 <pre><code>$ sudo apt-add-repository ppa:alexanderk23/ppa
 $ sudo apt-get update
@@ -57,7 +57,7 @@ $ sudo apt-get install gluqlo
 </code></pre>
 
 <h2>
-<a name="installation-source" class="anchor" href="#installation-source"><span class="octicon octicon-link"></span></a>Installation (Source)</h2>
+<a name="building-from-source" class="anchor" href="#building-from-source"><span class="octicon octicon-link"></span></a>Building from source</h2>
 
 <p>First, install build-time dependencies (Ubuntu/Debian):</p>
 
@@ -73,9 +73,14 @@ $ sudo apt-get install gluqlo
 <a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h2>
 
 <p>If you want to use Gluqlo as a screensaver, you may need to remove gnome-screensaver (which nowadays just does nothing)
-and install XScreensaver (if you're using Ubuntu, see <a href="http://www.howtogeek.com/114027/how-to-add-screensavers-to-ubuntu-12.04/">this page</a> for detailed instructions;
-don't forget to add gluqlo to your ~/.xscreensaver config file).
-Otherwise, you can just run it as is.</p>
+and install XScreensaver (if you're using Ubuntu, see <a href="http://www.howtogeek.com/114027/how-to-add-screensavers-to-ubuntu-12.04/">this page</a> for detailed instructions).
+Don't forget to add gluqlo to your ~/.xscreensaver config file:</p>
+
+<pre><code>
+GL: gluqlo --root \n\
+</code></pre>
+
+<p>Otherwise, you can just run it as is.</p>
 
 <h2>
 <a name="contributing" class="anchor" href="#contributing"><span class="octicon octicon-link"></span></a>Contributing</h2>
