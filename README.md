@@ -13,13 +13,13 @@ Currently it's very close to original Fliqlo (as I hope).
 - SDL_ttf 2.0
 - XScreensaver (optional)
 
-## Installation (Ubuntu PPA for Vivid, Trusty, Saucy, Quantal and Precise)
+## Installing from PPA (Ubuntu from Vivid up to Xenial)
 
     $ sudo apt-add-repository ppa:alexanderk23/ppa
     $ sudo apt-get update
     $ sudo apt-get install gluqlo
 
-## Building from source
+## Building from source (Other distros)
 
 First, install build-time dependencies (Ubuntu/Debian):
 
@@ -33,9 +33,9 @@ Then compile and install as usual:
 
 If you want to use Gluqlo as a screensaver, you may need to remove gnome-screensaver (which nowadays just does nothing)
 and install XScreensaver (if you're using Ubuntu, see [this page](http://www.howtogeek.com/114027/how-to-add-screensavers-to-ubuntu-12.04/) for detailed instructions).
-Don't forget to add gluqlo to your ~/.xscreensaver config file:
+Don't forget to add gluqlo to your ~/.xscreensaver config file (at `programs:` section):
 
-    GL: gluqlo --root \n\
+    gluqlo -root \n\
 
 Otherwise, you can just run it as is.
 
