@@ -248,7 +248,7 @@ void render_clock(int maxsteps, int step) {
 		snprintf(buffer2, 3, "%d", past_h);
 		render_digits(screen, &hourBackground, buffer, buffer2, maxsteps, step);
 		// draw am/pm
-		if(!twentyfourh) render_ampm(screen, &hourBackground, _time->tm_hour > 12);
+		if(!twentyfourh) render_ampm(screen, &hourBackground, _time->tm_hour >= 12);
 	}
 
 	// draw minutes
