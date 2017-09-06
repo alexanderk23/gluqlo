@@ -5,6 +5,7 @@
     <option id="24h" _label="24h mode"/>
     <option id="12h" _label="12h mode (AM/PM)" arg-set="-ampm"/>
   </select>
+  <number id="scale" type="slider" arg="-s %" _label="Scale" _low-label="50%" _high-label="150%" low="0.5" high="1.5" default="1.0"/>
   <_description>
 Gluqlo is a Linux remake of well-known Fliqlo screensaver.
 This version is based on Now Open Flipqlo 2.0 (https://github.com/bhm/noflipqlo) by Jacek Kuzniarski aka bhm.
