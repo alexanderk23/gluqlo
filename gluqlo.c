@@ -39,6 +39,7 @@ const int DEFAULT_HEIGHT = 768;
 
 bool twentyfourh = true;
 bool fullscreen = false;
+bool animate = true;
 
 int past_h = -1, past_m = -1;
 
@@ -222,6 +223,7 @@ void render_digits(SDL_Surface *surface, SDL_Rect *background, char digits[], ch
 	SDL_FreeSurface(scaled);
 	SDL_FreeSurface(bgcopy);
 
+	if(!animate) return;
 	// draw divider
 	rect.h = surface->h * 0.005;
 	rect.w = background->w;
@@ -268,6 +270,11 @@ void render_clock(int maxsteps, int step) {
 }
 
 void render_animation() {
+	if(!animate) {
+		render_clock(20, 19);
+		return;
+	}
+
 	const int DURATION = 260;
 	int start_tick = SDL_GetTicks();
 	int end_tick = start_tick + DURATION;
@@ -322,6 +329,7 @@ int main(int argc, char** argv ) {
 			printf("Usage: %s [OPTION...]\nOptions:\n", argv[0]);
 			printf("  -help\t\tDisplay this\n");
 			printf("  -root, -f\tFullscreen\n");
+			printf("  -noflip\t\tDisable the flip animation (change time in one frame)\n");
 			printf("  -ampm\t\tUse 12-hour clock format (AM/PM)\n");
 			printf("  -w\t\tCustom width\n");
 			printf("  -h\t\tCustom height\n");
@@ -330,6 +338,8 @@ int main(int argc, char** argv ) {
 			return 0;
 		} else if(strcmp("-root", argv[i]) == 0 || strcmp("-f", argv[i]) == 0 || strcmp("--fullscreen", argv[i]) == 0) {
 			fullscreen = true;
+		} else if(strcmp("-noflip", argv[i]) == 0) {
+			animate = false;
 		} else if(strcmp("-ampm", argv[i]) == 0) {
 			twentyfourh = false;
 		} else if(strcmp("-r", argv[i]) == 0 || strcmp("--resolution", argv[i]) == 0) {
