@@ -38,6 +38,7 @@ const int DEFAULT_WIDTH = 1024;
 const int DEFAULT_HEIGHT = 768;
 
 bool twentyfourh = true;
+bool leadingzero = false;
 bool fullscreen = false;
 
 int past_h = -1, past_m = -1;
@@ -244,8 +245,13 @@ void render_clock(int maxsteps, int step) {
 	// draw hours
 	if(_time->tm_hour != past_h) {
 		int h = twentyfourh ? _time->tm_hour : (_time->tm_hour + 11) % 12 + 1;
-		snprintf(buffer, 3, "%02d", h);
-		snprintf(buffer2, 3, "%02d", past_h);
+		if(leadingzero) {
+			snprintf(buffer, 3, "%02d", h);
+			snprintf(buffer2, 3, "%02d", past_h);
+		} else {
+			snprintf(buffer, 3, "%d", h);
+			snprintf(buffer2, 3, "%d", past_h);
+		}
 		render_digits(screen, &hourBackground, buffer, buffer2, maxsteps, step);
 		// draw am/pm
 		if(!twentyfourh) render_ampm(screen, &hourBackground, _time->tm_hour >= 12);
@@ -323,6 +329,7 @@ int main(int argc, char** argv ) {
 			printf("  -help\t\tDisplay this\n");
 			printf("  -root, -f\tFullscreen\n");
 			printf("  -ampm\t\tUse 12-hour clock format (AM/PM)\n");
+			printf("  -leadingzero\t\tAlways display hour with two digits\n");
 			printf("  -w\t\tCustom width\n");
 			printf("  -h\t\tCustom height\n");
 			printf("  -r\t\tCustom resolution in WxH format\n");
@@ -332,6 +339,8 @@ int main(int argc, char** argv ) {
 			fullscreen = true;
 		} else if(strcmp("-ampm", argv[i]) == 0) {
 			twentyfourh = false;
+		} else if(strcmp("-leadingzero", argv[i]) == 0) {
+			leadingzero = true;
 		} else if(strcmp("-r", argv[i]) == 0 || strcmp("--resolution", argv[i]) == 0) {
 			char *resolution = argv[i+1];
 			char *val = strtok(resolution, "x");
