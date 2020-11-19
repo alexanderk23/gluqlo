@@ -37,7 +37,7 @@ const char* TITLE = "Gluqlo 1.1";
 const int DEFAULT_WIDTH = 1024;
 const int DEFAULT_HEIGHT = 768;
 
-bool twentyfourh = true;
+bool twentyfourh = false;
 bool leadingzero = false;
 bool fullscreen = false;
 bool animate = true;
@@ -336,7 +336,7 @@ int main(int argc, char** argv ) {
 			printf("  -help\t\tDisplay this\n");
 			printf("  -root, -f\tFullscreen\n");
 			printf("  -noflip\t\tDisable the flip animation (change time in one frame)\n");
-			printf("  -ampm\t\tUse 12-hour clock format (AM/PM)\n");
+			printf("  -24h\t\tUse 24-hour clock format\n");
 			printf("  -leadingzero\t\tAlways display hour with two digits\n");
 			printf("  -w\t\tCustom width\n");
 			printf("  -h\t\tCustom height\n");
@@ -347,8 +347,8 @@ int main(int argc, char** argv ) {
 			fullscreen = true;
 		} else if(strcmp("-noflip", argv[i]) == 0) {
 			animate = false;
-		} else if(strcmp("-ampm", argv[i]) == 0) {
-			twentyfourh = false;
+		} else if(strcmp("-24h", argv[i]) == 0) {
+			twentyfourh = true;
 		} else if(strcmp("-leadingzero", argv[i]) == 0) {
 			leadingzero = true;
 		} else if(strcmp("-r", argv[i]) == 0 || strcmp("--resolution", argv[i]) == 0) {
