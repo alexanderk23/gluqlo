@@ -23,7 +23,7 @@ Currently it's very close to original Fliqlo (as I hope).
 
 First, clone the repository:
 
-    $ git clone https://github.com/naa-7/gluqlo.git
+    $ git clone https://github.com/alexanderk23/gluqlo.git
 
 Second, change directory to `gluqlo`:
 
