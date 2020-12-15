@@ -49,7 +49,7 @@ Sixth, optional, add gluqlo to your ~/.xscreensaver config file:
 
   2) Add the following at the end of (`programs:` section):
 
-    gluqlo -root /n/
+    gluqlo -root \n\
 
 
 ## Building from source (Other distros)
