@@ -19,6 +19,39 @@ Currently it's very close to original Fliqlo (as I hope).
     $ sudo apt-get update
     $ sudo apt-get install gluqlo
 
+## Building from source on Fedora
+
+First, clone the repository:
+
+    $ git clone https://github.com/alexanderk23/gluqlo.git
+
+Second, change directory to `gluqlo`:
+
+    $ cd gluqlo/
+
+Third, install build-time dependencies:
+
+    $ sudo dnf install SDL2 SDL2-devel libX11-devel @development-tools
+
+Fourth, compile and install as usual:
+
+    $ make && sudo make install
+
+Fifth, optional, make gluqlo available in XScreensaver:
+
+    $ sudo cp /usr/lib/xscreensaver/gluqlo /usr/libexec/xscreensaver/ 
+
+Sixth, optional, add gluqlo to your ~/.xscreensaver config file:
+
+  1) Open the configuration file:
+
+    $ sudo nano ~/.xscreensaver
+
+  2) Add the following at the end of (`programs:` section):
+
+    gluqlo -root \n\
+
+
 ## Building from source (Other distros)
 
 First, install build-time dependencies (Ubuntu/Debian):
