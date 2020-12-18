@@ -41,6 +41,7 @@ bool twentyfourh = true;
 bool leadingzero = false;
 bool fullscreen = false;
 bool animate = true;
+bool anykeyclose = false;
 
 int past_h = -1, past_m = -1;
 
@@ -335,9 +336,10 @@ int main(int argc, char** argv ) {
 			printf("Usage: %s [OPTION...]\nOptions:\n", argv[0]);
 			printf("  -help\t\tDisplay this\n");
 			printf("  -root, -f\tFullscreen\n");
-			printf("  -noflip\t\tDisable the flip animation (change time in one frame)\n");
+			printf("  -noflip\tDisable the flip animation (change time in one frame)\n");
+			printf("  -anykeyclose\tClose app when mouse move or any key pressed\n");
 			printf("  -ampm\t\tUse 12-hour clock format (AM/PM)\n");
-			printf("  -leadingzero\t\tAlways display hour with two digits\n");
+			printf("  -leadingzero\tAlways display hour with two digits\n");
 			printf("  -w\t\tCustom width\n");
 			printf("  -h\t\tCustom height\n");
 			printf("  -r\t\tCustom resolution in WxH format\n");
@@ -347,6 +349,8 @@ int main(int argc, char** argv ) {
 			fullscreen = true;
 		} else if(strcmp("-noflip", argv[i]) == 0) {
 			animate = false;
+		} else if(strcmp("-anykeyclose", argv[i]) == 0) {
+			anykeyclose = true;
 		} else if(strcmp("-ampm", argv[i]) == 0) {
 			twentyfourh = false;
 		} else if(strcmp("-leadingzero", argv[i]) == 0) {
@@ -474,12 +478,19 @@ int main(int argc, char** argv ) {
 	SDL_Event event;
 	SDL_TimerID timer = SDL_AddTimer(60, update_time, NULL);
 
+	int mouse_x = -1;
+	int mouse_y = -1;	
+
 	while(!done && SDL_WaitEvent(&event)) {
 		switch(event.type) {
 			case SDL_USEREVENT:
 				render_animation();
 				break;
 			case SDL_KEYDOWN:
+				if(anykeyclose){
+					done = true;
+					break;
+				}
 				switch(event.key.keysym.sym) {
 					case SDLK_ESCAPE:
 					case SDLK_q:
@@ -489,6 +500,19 @@ int main(int argc, char** argv ) {
 						break;
 				}
 				break;
+
+			case SDL_MOUSEMOTION:
+				if ( (mouse_x == -1) || (mouse_y == -1) ) //lifehack
+					{
+						mouse_x = event.motion.x;
+						mouse_y = event.motion.y;
+
+					}
+
+				if(((mouse_x != event.motion.x) || (mouse_y != event.motion.y)) && anykeyclose)
+					done = true;
+				break;
+
 			case SDL_QUIT:
 				done = true;
 				break;
