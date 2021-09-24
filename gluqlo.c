@@ -178,7 +178,9 @@ void render_digits(SDL_Surface *surface, SDL_Rect *background, char digits[], ch
 	double scale;
 	Uint8 c;
 
-	int spc = surface->h * .0125;
+	// int spc = surface->h * .0125;
+	bool is_h = surface->h < surface->w;
+	int spc = is_h ? surface->h * .0125 : surface->w * .0125;
 
 	// blit upper halves of current digits
 	rect.x = background->x;
@@ -227,7 +229,7 @@ void render_digits(SDL_Surface *surface, SDL_Rect *background, char digits[], ch
 
 	if(!animate) return;
 	// draw divider
-	rect.h = surface->h * 0.005;
+	rect.h = (is_h ? surface->h : surface->w) * 0.005;
 	rect.w = background->w;
 	rect.x = background->x;
 	rect.y = background->y + (background->h - rect.h) / 2;
@@ -425,11 +427,13 @@ int main(int argc, char** argv ) {
 
 	width = screen->w * display_scale_factor;
 	height = screen->h * display_scale_factor;
+
+	bool is_horizontal = width > height;
 	
 	TTF_Init();
 	atexit(TTF_Quit);
-	font_time = TTF_OpenFont(FONT, height / 1.68 );
-	font_mode = TTF_OpenFont(FONT, height / 16.5);
+	font_time = TTF_OpenFont(FONT, (is_horizontal ? height : width) / 1.68 );
+	font_mode = TTF_OpenFont(FONT, (is_horizontal ? height : width) / 16.5);
 	if (!font_time || !font_mode) {
 		fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
 		return 1;
@@ -439,9 +443,20 @@ int main(int argc, char** argv ) {
 	SDL_FillRect(screen, 0, SDL_MapRGB(screen->format, 0, 0, 0));
 
 	// calculate box coordinates
-	int rectsize = height * 0.6;
-	int spacing = width * .031;
-	int radius =  height * .05714;
+	int rectsize;
+	int spacing;
+	int radius;
+
+	if (is_horizontal) {
+		rectsize = height * 0.6;
+		spacing = width * .031;
+		radius =  height * .05714;
+	}
+	else {
+		rectsize = width * 0.6;
+		spacing = height * .031;
+		radius =  width * .05714;
+	}
 
 	int jitter_width  = 1;
 	int jitter_height = 1;
@@ -450,17 +465,27 @@ int main(int argc, char** argv ) {
 		jitter_height = (screen->h - height) * 0.5;
 	}
 
-
-	hourBackground.x = 0.5 * (width - (0.031 * width) - (1.2 * height)) 
-									+ jitter_width;
-	hourBackground.y = 0.2 * height + jitter_height;
-	hourBackground.w = rectsize ;
-	hourBackground.h = rectsize ;
-
-	minBackground.x = hourBackground.x + (0.6 * height) + spacing;
-	minBackground.y = hourBackground.y;
+	hourBackground.w = rectsize;
+	hourBackground.h = rectsize;
 	minBackground.w = rectsize;
 	minBackground.h = rectsize;
+
+	if (is_horizontal) {
+		hourBackground.x = 0.5 * (width - (0.031 * width) - (1.2 * height))
+										+ jitter_width;
+		hourBackground.y = 0.2 * height + jitter_height;
+
+		minBackground.x = hourBackground.x + (0.6 * height) + spacing;
+		minBackground.y = hourBackground.y;
+	}
+	else {
+		hourBackground.y = 0.5 * (height - (0.031 * height) - (1.2 * width))
+										+ jitter_height;
+		hourBackground.x = 0.2 * width + jitter_width;
+
+		minBackground.y = hourBackground.y + (0.6 * width) + spacing;
+		minBackground.x = hourBackground.x;
+	}
 
 	// create background surface
 	bgrect.x = 0;
