@@ -5,6 +5,9 @@
     <option id="24h" _label="24h mode"/>
     <option id="12h" _label="12h mode (AM/PM)" arg-set="-ampm"/>
   </select>
+  <boolean id="leadingzero" _label="Leading Zero (24h)" arg-set="-leadingzero"/>
+  <boolean id="noflip" _label="No Flip" arg-set="-noflip"/>
+  <boolean id="anykeyclose" _label="Any Key Close" arg-set="-anykeyclose"/>
   <number id="scale" type="slider" arg="-s %" _label="Scale" _low-label="50%" _high-label="150%" low="0.5" high="1.5" default="1.0"/>
   <_description>
 Gluqlo is a Linux remake of well-known Fliqlo screensaver.
