@@ -10,7 +10,7 @@ gluqlo: gluqlo.c
 
 install:
 	strip gluqlo
-	install -o root -m 0755 -D gluqlo $(DESTDIR)/usr/lib/xscreensaver/gluqlo
+	install -o root -m 0755 -D gluqlo $(DESTDIR)/usr/libexec/xscreensaver/gluqlo
 	install -o root -m 0644 -D gluqlo.ttf $(FONTDIR)/gluqlo.ttf
 	install -o root -m 0644 -D gluqlo.png $(DESTDIR)/usr/share/pixmaps/gluqlo.png
 	install -o root -m 0644 -D gluqlo.xml $(DESTDIR)/usr/share/xscreensaver/config/gluqlo.xml
@@ -18,7 +18,7 @@ install:
 
 uninstall:
 	rm -f $(DESTDIR)/usr/share/xscreensaver/config/gluqlo.xml $(DESTDIR)/usr/share/applications/screensavers/gluqlo.desktop \
-		$(DESTDIR)/usr/lib/xscreensaver/gluqlo $(FONTDIR)/gluqlo.ttf $(DESTDIR)/usr/share/pixmaps/gluqlo.png
+		$(DESTDIR)/usr/libexec/xscreensaver/gluqlo $(FONTDIR)/gluqlo.ttf $(DESTDIR)/usr/share/pixmaps/gluqlo.png
 
 clean:
 	rm -f gluqlo
