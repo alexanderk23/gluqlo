@@ -24,6 +24,11 @@ Currently it's very close to original Fliqlo (as I hope).
 First, install build-time dependencies (Ubuntu/Debian):
 
     $ sudo apt-get install build-essential libsdl1.2-dev libsdl-ttf2.0-dev libsdl-gfx1.2-dev libx11-dev
+    
+for Fedora:
+
+    $ sudo dnf install g++ sdl12-compat-devel SDL_ttf-devel SDL_gfx-devel
+
 
 Then compile and install as usual:
 
