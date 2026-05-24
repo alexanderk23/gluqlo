@@ -22,6 +22,7 @@
 #include <string.h>
 #include <X11/Xlib.h>
 #include <time.h>
+#include <signal.h>
 
 #include "SDL.h"
 #include "SDL_ttf.h"
@@ -42,6 +43,9 @@ bool leadingzero = false;
 bool fullscreen = false;
 bool animate = true;
 bool anykeyclose = false;
+
+static volatile sig_atomic_t quit_flag = 0;
+static void handle_signal(int sig) { (void)sig; quit_flag = 1; }
 
 int past_h = -1, past_m = -1;
 
@@ -304,6 +308,14 @@ void render_animation() {
 }
 
 Uint32 update_time(Uint32 interval, void *param) {
+	if (quit_flag) {
+		SDL_Event e;
+		memset(&e, 0, sizeof(e));
+		e.type = SDL_QUIT;
+		SDL_PushEvent(&e);
+		return 0;
+	}
+
 	SDL_Event e;
 	time_t rawtime;
 	struct tm *time_i;
@@ -409,6 +421,10 @@ int main(int argc, char** argv ) {
 	}
 	atexit(SDL_Quit);
 
+	signal(SIGTERM, handle_signal);
+	signal(SIGINT, handle_signal);
+	signal(SIGHUP, handle_signal);
+
 	if(fullscreen && (!wid)) {
 		screen = SDL_SetVideoMode(0, 0, 32, SDL_HWSURFACE|SDL_DOUBLEBUF|SDL_FULLSCREEN);
 	} else {
@@ -507,7 +523,7 @@ int main(int argc, char** argv ) {
 	int mouse_x = -1;
 	int mouse_y = -1;	
 
-	while(!done && SDL_WaitEvent(&event)) {
+	while(!done && !quit_flag && SDL_WaitEvent(&event)) {
 		switch(event.type) {
 			case SDL_USEREVENT:
 				render_animation();
