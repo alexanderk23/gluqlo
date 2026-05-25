@@ -19,21 +19,25 @@
 */
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
-#include <X11/Xlib.h>
+#include <signal.h>
+#include <math.h>
 #include <time.h>
 
-#include "SDL.h"
-#include "SDL_ttf.h"
-#include "SDL_syswm.h"
-#include "SDL_gfxPrimitives.h"
-#include "SDL_rotozoom.h"
+#include <SDL.h>
+#include <SDL_ttf.h>
+
+#ifdef XSCREENSAVER
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#endif
 
 #ifndef FONT
 #define FONT "/usr/share/gluqlo/gluqlo.ttf"
 #endif
 
-const char* TITLE = "Gluqlo 1.1";
+const char* TITLE = "Gluqlo 1.2";
 const int DEFAULT_WIDTH = 1024;
 const int DEFAULT_HEIGHT = 768;
 
@@ -51,10 +55,20 @@ int height = DEFAULT_HEIGHT;
 TTF_Font *font_time = NULL;
 TTF_Font *font_mode = NULL;
 
-const SDL_Color FONT_COLOR = { 0xb7, 0xb7, 0xb7 };
-const SDL_Color BACKGROUND_COLOR = { 0x0f, 0x0f, 0x0f };
+const SDL_Color FONT_COLOR = { 0xb7, 0xb7, 0xb7, 0xff };
+const SDL_Color BACKGROUND_COLOR = { 0x0f, 0x0f, 0x0f, 0xff };
 
-SDL_Surface *screen;
+SDL_Window *window = NULL;
+SDL_Renderer *renderer = NULL;
+SDL_Texture *screen_texture = NULL;
+SDL_Surface *screen = NULL;
+
+#ifdef XSCREENSAVER
+Display *xscr_display = NULL;
+Window xscr_window = 0;
+GC xscr_gc = NULL;
+XImage *xscr_image = NULL;
+#endif
 
 SDL_Rect hourBackground;
 SDL_Rect minBackground;
@@ -62,8 +76,38 @@ SDL_Rect minBackground;
 SDL_Rect bgrect;
 SDL_Surface *bg;
 
-// draw rounded box
-// see http://lists.libsdl.org/pipermail/sdl-libsdl.org/2006-December/058868.html
+volatile sig_atomic_t quit_flag = 0;
+
+static void signal_handler(int sig) {
+	(void)sig;
+	quit_flag = 1;
+}
+
+#ifdef XSCREENSAVER
+static int x_error_handler(Display *dpy, XErrorEvent *event) {
+	(void)dpy;
+	(void)event;
+	return 0;
+}
+#endif
+
+static void present_screen() {
+#ifdef XSCREENSAVER
+	if(xscr_display) {
+		xscr_image->data = (char*)screen->pixels;
+		xscr_image->bytes_per_line = screen->pitch;
+		XPutImage(xscr_display, xscr_window, xscr_gc, xscr_image,
+			0, 0, 0, 0, screen->w, screen->h);
+		XFlush(xscr_display);
+		return;
+	}
+#endif
+	SDL_UpdateTexture(screen_texture, NULL, screen->pixels, screen->pitch);
+	SDL_RenderClear(renderer);
+	SDL_RenderCopy(renderer, screen_texture, NULL, NULL);
+	SDL_RenderPresent(renderer);
+}
+
 void fill_rounded_box_b(SDL_Surface* dst, SDL_Rect *coords, int r, SDL_Color color) {
 	Uint32 pixcolor = SDL_MapRGB(dst->format, color.r, color.g, color.b);
 
@@ -139,32 +183,29 @@ void render_ampm(SDL_Surface *surface, SDL_Rect *rect, int pm) {
 
 
 void blit_digits(SDL_Surface *surface, SDL_Rect *rect, int spc, char digits[], SDL_Color color) {
-	int min_x, max_x, min_y, max_y, advance;
-	int adjust_x = (digits[0] == '1') ? 2.5 * spc : 0; // special case
-	int center_x = rect->x + rect->w / 2 - adjust_x;
-
 	SDL_Surface *glyph;
 	SDL_Rect coords;
 
 	if(digits[1]) {
-		// first digit
-		TTF_GlyphMetrics(font_time, digits[0], &min_x, &max_x, &min_y, &max_y, &advance);
-		glyph = TTF_RenderGlyph_Blended(font_time, digits[0], color);
-		coords.x = center_x - max_x + min_x - spc - (adjust_x ? spc : 0);
-		coords.y = rect->y + (rect->h - glyph->h) / 2;
-		SDL_BlitSurface(glyph, 0, surface, &coords);
-		SDL_FreeSurface(glyph);
-		// second digit
-		TTF_GlyphMetrics(font_time, digits[1], &min_x, &max_x, &min_y, &max_y, &advance);
-		glyph = TTF_RenderGlyph_Blended(font_time, digits[1], color);
-		coords.y = rect->y + (rect->h - glyph->h) / 2;
-		coords.x = center_x + spc / 2;
-		SDL_BlitSurface(glyph, 0, surface, &coords);
-		SDL_FreeSurface(glyph);
+		SDL_Surface *glyph0 = TTF_RenderGlyph_Blended(font_time, digits[0], color);
+		SDL_Surface *glyph1 = TTF_RenderGlyph_Blended(font_time, digits[1], color);
+
+		int total_w = glyph0->w + spc + glyph1->w;
+		int start_x = rect->x + (rect->w - total_w) / 2;
+
+		coords.x = start_x;
+		coords.y = rect->y + (rect->h - glyph0->h) / 2;
+		SDL_BlitSurface(glyph0, 0, surface, &coords);
+
+		coords.x = start_x + glyph0->w + spc;
+		coords.y = rect->y + (rect->h - glyph1->h) / 2;
+		SDL_BlitSurface(glyph1, 0, surface, &coords);
+
+		SDL_FreeSurface(glyph0);
+		SDL_FreeSurface(glyph1);
 	} else {
-		// single digit
 		glyph = TTF_RenderGlyph_Blended(font_time, digits[0], color);
-		coords.x = center_x - glyph->w / 2;
+		coords.x = rect->x + (rect->w - glyph->w) / 2;
 		coords.y = rect->y + (rect->h - glyph->h) / 2;
 		SDL_BlitSurface(glyph, 0, surface, &coords);
 		SDL_FreeSurface(glyph);
@@ -178,7 +219,6 @@ void render_digits(SDL_Surface *surface, SDL_Rect *background, char digits[], ch
 	double scale;
 	Uint8 c;
 
-	// int spc = surface->h * .0125;
 	bool is_h = surface->h < surface->w;
 	int spc = is_h ? surface->h * .0125 : surface->w * .0125;
 
@@ -202,18 +242,27 @@ void render_digits(SDL_Surface *surface, SDL_Rect *background, char digits[], ch
 		c = 0xb7 * ((1.0 * step) - halfsteps + 1) / halfsteps;
 	}
 	color.r = color.g = color.b = c;
+	color.a = 0xff;
 
-	// create surface to scale from filled background surface
-	// bgcopy is using for blit text, so need use same format with screen, for avoid any alpha rendering problem
-	SDL_Surface *bgcopy = SDL_ConvertSurface(bg, surface->format, surface->flags);
+	SDL_Surface *bgcopy = SDL_ConvertSurface(bg, surface->format, 0);
 	rect.x = 0;
 	rect.y = 0;
 	rect.w = bgcopy->w;
 	rect.h = bgcopy->h;
 	blit_digits(bgcopy, &rect, spc, upperhalf ? prevdigits : digits, color);
 
-	// scale and blend it to dest
-	SDL_Surface *scaled = zoomSurface(bgcopy, 1.0, scale, 1);
+	// scale vertically using SDL_BlitScaled
+	int scaled_h = (int)(bgcopy->h * scale);
+	if(scaled_h < 1) scaled_h = 1;
+	SDL_Surface *scaled = SDL_CreateRGBSurface(0, bgcopy->w, scaled_h,
+		surface->format->BitsPerPixel,
+		surface->format->Rmask, surface->format->Gmask,
+		surface->format->Bmask, surface->format->Amask);
+
+	SDL_Rect src_all = {0, 0, bgcopy->w, bgcopy->h};
+	SDL_Rect dst_all = {0, 0, bgcopy->w, scaled_h};
+	SDL_BlitScaled(bgcopy, &src_all, scaled, &dst_all);
+
 	rect.x = 0;
 	rect.y = upperhalf ? 0 : scaled->h / 2;
 	rect.w = scaled->w;
@@ -221,7 +270,7 @@ void render_digits(SDL_Surface *surface, SDL_Rect *background, char digits[], ch
 	dstrect.x = background->x;
 	dstrect.y = background->y + ( upperhalf ? ((background->h - scaled->h) / 2) : background->h / 2);
 	dstrect.w = rect.w;
-	dstrect.h = rect.h;	
+	dstrect.h = rect.h;
 	SDL_SetClipRect(surface, &dstrect);
 	SDL_BlitSurface(scaled, &rect, surface, &dstrect);
 	SDL_SetClipRect(surface, NULL);
@@ -270,8 +319,7 @@ void render_clock(int maxsteps, int step) {
 		render_digits(screen, &minBackground, buffer, buffer2, maxsteps, step);
 	}
 
-	// flip backbuffer
-	SDL_Flip(screen);
+	present_screen();
 
 	if(step == maxsteps-1) {
 		past_h = _time->tm_hour;
@@ -304,9 +352,16 @@ void render_animation() {
 }
 
 Uint32 update_time(Uint32 interval, void *param) {
+	(void)param;
 	SDL_Event e;
 	time_t rawtime;
 	struct tm *time_i;
+
+	if(quit_flag) {
+		e.type = SDL_QUIT;
+		SDL_PushEvent(&e);
+		return 0;
+	}
 
 	time(&rawtime);
 	time_i = localtime(&rawtime);
@@ -326,13 +381,8 @@ Uint32 update_time(Uint32 interval, void *param) {
 }
 
 int main(int argc, char** argv ) {
-	char *wid_env;
-	static char sdlwid[100];
 	double display_scale_factor = 1;
-
-	Uint32 wid = 0;
-	Display *display;
-	XWindowAttributes windowAttributes;
+	unsigned long wid = 0;
 
 	for(int i = 1; i < argc; i++) {
 		if(strcmp("--help",argv[i]) == 0 || strcmp("-help", argv[i]) == 0) {
@@ -348,7 +398,7 @@ int main(int argc, char** argv ) {
 			printf("  -r\t\tCustom resolution in WxH format\n");
 			printf("  -s\t\tCustom display scale factor\n");
 			return 0;
-		} else if(strcmp("-root", argv[i]) == 0 || strcmp("-f", argv[i]) == 0 || strcmp("--fullscreen", argv[i]) == 0) {
+		} else if(strcmp("-root", argv[i]) == 0 || strcmp("--root", argv[i]) == 0 || strcmp("-f", argv[i]) == 0 || strcmp("--fullscreen", argv[i]) == 0) {
 			fullscreen = true;
 		} else if(strcmp("-noflip", argv[i]) == 0) {
 			animate = false;
@@ -359,6 +409,7 @@ int main(int argc, char** argv ) {
 		} else if(strcmp("-leadingzero", argv[i]) == 0) {
 			leadingzero = true;
 		} else if(strcmp("-r", argv[i]) == 0 || strcmp("--resolution", argv[i]) == 0) {
+			if(i+1 >= argc) { fprintf(stderr, "Missing argument for %s\n", argv[i]); return 1; }
 			char *resolution = argv[i+1];
 			char *val = strtok(resolution, "x");
 			width = atoi(val);
@@ -366,16 +417,20 @@ int main(int argc, char** argv ) {
 			height = atoi(val);
 			i++;
 		} else if(strcmp("-w", argv[i]) == 0) {
+			if(i+1 >= argc) { fprintf(stderr, "Missing argument for %s\n", argv[i]); return 1; }
 			width = atoi(argv[i+1]);
 			i++;
 		} else if(strcmp("-h", argv[i]) == 0) {
+			if(i+1 >= argc) { fprintf(stderr, "Missing argument for %s\n", argv[i]); return 1; }
 			height = atoi(argv[i+1]);
 			i++;
 		} else if(strcmp("-s", argv[i]) == 0) {
+			if(i+1 >= argc) { fprintf(stderr, "Missing argument for %s\n", argv[i]); return 1; }
 			display_scale_factor = atof(argv[i+1]);
 			i++;
-		} else if(strcmp("-window-id", argv[i]) == 0) {
-			wid = strtol(argv[i+1], (char **) NULL, 0);
+		} else if(strcmp("-window-id", argv[i]) == 0 || strcmp("--window-id", argv[i]) == 0) {
+			if(i+1 >= argc) { fprintf(stderr, "Missing argument for %s\n", argv[i]); return 1; }
+			wid = strtoul(argv[i+1], (char **) NULL, 0);
 			i++;
 		} else {
 			printf("Invalid option -- %s\n", argv[i]);
@@ -384,53 +439,151 @@ int main(int argc, char** argv ) {
 		}
 	}
 
-	/* If no window argument, check environment */
+#ifdef XSCREENSAVER
+	char *wid_env;
+	XWindowAttributes windowAttributes;
+
+	XSetErrorHandler(x_error_handler);
+
 	if(wid == 0) {
-		if ((wid_env = getenv("XSCREENSAVER_WINDOW")) != NULL ) {
-			wid = strtol(wid_env, (char **) NULL, 0); /* Base 0 autodetects hex/dec */
+		if ((wid_env = getenv("XSCREENSAVER_WINDOW")) != NULL) {
+			wid = strtoul(wid_env, (char **) NULL, 0);
 		}
 	}
+#endif
 
-	/* Get win attrs if we've been given a window, otherwise we'll use our own */
+	signal(SIGTERM, signal_handler);
+	signal(SIGINT, signal_handler);
+	signal(SIGHUP, signal_handler);
+
+#ifdef XSCREENSAVER
 	if(wid != 0) {
-		if ((display = XOpenDisplay(NULL)) != NULL) { /* Use the default display */
-			XGetWindowAttributes(display, (Window) wid, &windowAttributes);
-			XCloseDisplay(display);
-			snprintf(sdlwid, 100, "SDL_WINDOWID=0x%X", wid);
-			putenv(sdlwid); /* Tell SDL to use this window */
-			width = windowAttributes.width;
-			height = windowAttributes.height;
+		xscr_display = XOpenDisplay(NULL);
+		if(xscr_display) {
+			if(XGetWindowAttributes(xscr_display, (Window)wid, &windowAttributes)) {
+				width = windowAttributes.width;
+				height = windowAttributes.height;
+				xscr_window = (Window)wid;
+				xscr_gc = XCreateGC(xscr_display, xscr_window, 0, NULL);
+			} else {
+				XCloseDisplay(xscr_display);
+				xscr_display = NULL;
+				wid = 0;
+			}
+		} else {
+			wid = 0;
 		}
 	}
 
-	if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0) {
-		fprintf(stderr, "Unable to init SDL: %s\n", SDL_GetError());
-		return 1;
+	if(xscr_display) {
+		if(SDL_Init(SDL_INIT_TIMER) < 0) {
+			fprintf(stderr, "Unable to init SDL: %s\n", SDL_GetError());
+			return 1;
+		}
+		xscr_image = XCreateImage(xscr_display,
+			DefaultVisual(xscr_display, DefaultScreen(xscr_display)),
+			DefaultDepth(xscr_display, DefaultScreen(xscr_display)),
+			ZPixmap, 0, NULL, width, height, 32, 0);
+		if(!xscr_image) {
+			fprintf(stderr, "Unable to create XImage\n");
+			if(xscr_gc) XFreeGC(xscr_display, xscr_gc);
+			XCloseDisplay(xscr_display);
+			return 1;
+		}
+
+		Uint32 rmask, gmask, bmask, amask;
+		if(xscr_image->bits_per_pixel == 32) {
+			Visual *v = DefaultVisual(xscr_display, DefaultScreen(xscr_display));
+			rmask = v->red_mask;
+			gmask = v->green_mask;
+			bmask = v->blue_mask;
+			amask = ~(rmask | gmask | bmask);
+		} else {
+			rmask = 0x00FF0000;
+			gmask = 0x0000FF00;
+			bmask = 0x000000FF;
+			amask = 0xFF000000;
+		}
+		screen = SDL_CreateRGBSurface(0, width, height, 32,
+			rmask, gmask, bmask, amask);
+		if(!screen) {
+			fprintf(stderr, "Unable to create screen surface\n");
+			if(xscr_gc) XFreeGC(xscr_display, xscr_gc);
+			XCloseDisplay(xscr_display);
+			return 1;
+		}
+	} else
+#endif
+	{
+		if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0) {
+			fprintf(stderr, "Unable to init SDL: %s\n", SDL_GetError());
+			return 1;
+		}
+		if(fullscreen) {
+			window = SDL_CreateWindow(TITLE,
+				SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+				0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP);
+		} else {
+			window = SDL_CreateWindow(TITLE,
+				SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+				width, height, SDL_WINDOW_SHOWN);
+		}
+
+		if(!window) {
+			fprintf(stderr, "Unable to create window: %s\n", SDL_GetError());
+			return 1;
+		}
+
+		renderer = SDL_CreateRenderer(window, -1,
+			SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+		if(!renderer) {
+			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
+		}
+		if(!renderer) {
+			fprintf(stderr, "Unable to create renderer: %s\n", SDL_GetError());
+			SDL_DestroyWindow(window);
+			return 1;
+		}
 	}
 	atexit(SDL_Quit);
 
-	if(fullscreen && (!wid)) {
-		screen = SDL_SetVideoMode(0, 0, 32, SDL_HWSURFACE|SDL_DOUBLEBUF|SDL_FULLSCREEN);
-	} else {
-		screen = SDL_SetVideoMode(width, height, 32, SDL_HWSURFACE|SDL_DOUBLEBUF);
-	}
-
-	if (!screen) {
-		fprintf(stderr, "Unable to set video mode: %s\n", SDL_GetError());
-		return 1;
-	}
-
-	if(fullscreen || wid) {
+	if(window && (fullscreen || wid)) {
 		SDL_ShowCursor(SDL_DISABLE);
 	}
 
-	SDL_WM_SetCaption(TITLE, TITLE);
+	int render_w, render_h;
+	if(renderer) {
+		SDL_GetRendererOutputSize(renderer, &render_w, &render_h);
+		screen = SDL_CreateRGBSurface(0, render_w, render_h, 32,
+			0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+	} else {
+		render_w = width;
+		render_h = height;
+	}
+	if(!screen) {
+		fprintf(stderr, "Unable to create screen surface: %s\n", SDL_GetError());
+		SDL_DestroyRenderer(renderer);
+		SDL_DestroyWindow(window);
+		return 1;
+	}
 
-	width = screen->w * display_scale_factor;
-	height = screen->h * display_scale_factor;
+	if(renderer) {
+		screen_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+			SDL_TEXTUREACCESS_STREAMING, render_w, render_h);
+		if(!screen_texture) {
+			fprintf(stderr, "Unable to create screen texture: %s\n", SDL_GetError());
+			SDL_FreeSurface(screen);
+			SDL_DestroyRenderer(renderer);
+			SDL_DestroyWindow(window);
+			return 1;
+		}
+	}
+
+	width = render_w * display_scale_factor;
+	height = render_h * display_scale_factor;
 
 	bool is_horizontal = width > height;
-	
+
 	TTF_Init();
 	atexit(TTF_Quit);
 	font_time = TTF_OpenFont(FONT, (is_horizontal ? height : width) / 1.68 );
@@ -462,8 +615,8 @@ int main(int argc, char** argv ) {
 	int jitter_width  = 1;
 	int jitter_height = 1;
 	if (display_scale_factor != 1) {
-		jitter_width  = (screen->w - width) * 0.5;
-		jitter_height = (screen->h - height) * 0.5;
+		jitter_width  = (render_w - width) * 0.5;
+		jitter_height = (render_h - height) * 0.5;
 	}
 
 	hourBackground.w = rectsize;
@@ -493,62 +646,97 @@ int main(int argc, char** argv ) {
 	bgrect.y = 0;
 	bgrect.w = rectsize;
 	bgrect.h = rectsize;
-	bg = SDL_CreateRGBSurface(SDL_HWSURFACE|SDL_SRCALPHA, rectsize, rectsize, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0x000000ff);
+	bg = SDL_CreateRGBSurface(0, rectsize, rectsize, 32,
+		screen->format->Rmask, screen->format->Gmask,
+		screen->format->Bmask, screen->format->Amask);
 	fill_rounded_box_b(bg, &bgrect, radius, BACKGROUND_COLOR);
 
 	// draw current time
 	render_clock(20, 19);
 
 	// main loop
-	bool done = false;
-	SDL_Event event;
-	SDL_TimerID timer = SDL_AddTimer(60, update_time, NULL);
-
-	int mouse_x = -1;
-	int mouse_y = -1;	
-
-	while(!done && SDL_WaitEvent(&event)) {
-		switch(event.type) {
-			case SDL_USEREVENT:
+#ifdef XSCREENSAVER
+	if(xscr_display) {
+		struct timespec ts = {0, 250000000};
+		while(!quit_flag) {
+			time_t rawtime;
+			struct tm *time_i;
+			time(&rawtime);
+			time_i = localtime(&rawtime);
+			if(time_i->tm_min != past_m) {
 				render_animation();
-				break;
-			case SDL_KEYDOWN:
-				if(anykeyclose){
-					done = true;
+			}
+			nanosleep(&ts, NULL);
+		}
+	} else
+#endif
+	{
+		bool done = false;
+		SDL_Event event;
+		SDL_TimerID timer = SDL_AddTimer(60, update_time, NULL);
+
+		int mouse_x = -1;
+		int mouse_y = -1;
+
+		while(!done && !quit_flag && SDL_WaitEvent(&event)) {
+			switch(event.type) {
+				case SDL_USEREVENT:
+					render_animation();
 					break;
-				}
-				switch(event.key.keysym.sym) {
-					case SDLK_ESCAPE:
-					case SDLK_q:
+				case SDL_KEYDOWN:
+					if(anykeyclose){
 						done = true;
 						break;
-					default:
-						break;
-				}
-				break;
-
-			case SDL_MOUSEMOTION:
-				if ( (mouse_x == -1) || (mouse_y == -1) ) //lifehack
-					{
-						mouse_x = event.motion.x;
-						mouse_y = event.motion.y;
-
 					}
+					switch(event.key.keysym.sym) {
+						case SDLK_ESCAPE:
+						case SDLK_q:
+							done = true;
+							break;
+						default:
+							break;
+					}
+					break;
 
-				if(((mouse_x != event.motion.x) || (mouse_y != event.motion.y)) && anykeyclose)
+				case SDL_MOUSEMOTION:
+					if ( (mouse_x == -1) || (mouse_y == -1) )
+						{
+							mouse_x = event.motion.x;
+							mouse_y = event.motion.y;
+
+						}
+
+					if(((mouse_x != event.motion.x) || (mouse_y != event.motion.y)) && anykeyclose)
+						done = true;
+					break;
+
+				case SDL_QUIT:
 					done = true;
-				break;
-
-			case SDL_QUIT:
-				done = true;
-				break;
+					break;
+			}
 		}
-	}
 
-	SDL_RemoveTimer(timer);
+		SDL_RemoveTimer(timer);
+	}
 
 	SDL_FreeSurface(bg);
 	SDL_FreeSurface(screen);
+
+#ifdef XSCREENSAVER
+	if(xscr_display) {
+		if(xscr_image) {
+			xscr_image->data = NULL;
+			XDestroyImage(xscr_image);
+		}
+		if(xscr_gc) XFreeGC(xscr_display, xscr_gc);
+		XCloseDisplay(xscr_display);
+	} else
+#endif
+	{
+		if(screen_texture) SDL_DestroyTexture(screen_texture);
+		if(renderer) SDL_DestroyRenderer(renderer);
+		if(window) SDL_DestroyWindow(window);
+	}
 
 	TTF_CloseFont(font_time);
 	TTF_CloseFont(font_mode);

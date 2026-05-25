@@ -1,14 +1,11 @@
 [Desktop Entry]
-Encoding=UTF-8
-Name=Gluqlo: Fliqlo for Linux
-Comment=SDL implementation of Fliqlo, a very popular OSX screensaver
+Name=Gluqlo
+Comment=Flip clock screensaver inspired by Fliqlo
 Icon=gluqlo
-Exec=/usr/libexec/xscreensaver/gluqlo -root
+Exec=/usr/libexec/xscreensaver/gluqlo --root
 TryExec=/usr/libexec/xscreensaver/gluqlo
 StartupNotify=false
 Terminal=false
 Type=Application
-Categories=GNOME;Screensaver;
-OnlyShowIn=GNOME;
-X-Ubuntu-Gettext-Domain=gnome-screensaver
-
+Categories=Screensaver;
+OnlyShowIn=MATE;GNOME;
