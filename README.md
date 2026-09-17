@@ -29,6 +29,16 @@ Then compile and install as usual:
 
     $ make && sudo make install
 
+### Arch Linux
+
+Install the build dependencies:
+
+    $ sudo pacman -S --needed base-devel sdl12-compat sdl_ttf sdl_gfx libx11
+
+Then compile and install:
+
+    $ make && sudo make install
+
 ## Usage
 
 If you want to use Gluqlo as a screensaver, you may need to remove gnome-screensaver (which nowadays just does nothing)
